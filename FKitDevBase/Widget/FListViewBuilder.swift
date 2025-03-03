@@ -7,6 +7,7 @@
 
 import UIKit
 
+
 class TableViewSectionData<D, T> {
     var header: D?
     var rows: [T]
@@ -18,18 +19,21 @@ class TableViewSectionData<D, T> {
 }
 
 
+
 class FListViewBuilder<D, T>: UIView, UITableViewDataSource, UITableViewDelegate {
     
     private var data: [TableViewSectionData<D, T>] = []
     private let cellBuilder: ((T, IndexPath) -> UIView)?
     private let headerBuilder: ((D, Int) -> UIView)?
+    private var lastCellWillDisplay: (() -> ())?
     
     private let tableView = UITableView(frame: .zero, style: .plain)
     
-    init(data: [TableViewSectionData<D, T>] = [],  headerBuilder: ((D, Int) -> UIView)? = nil, cellBuilder: ((T, IndexPath) -> UIView)? = nil) {
+    init(data: [TableViewSectionData<D, T>] = [],  headerBuilder: ((D, Int) -> UIView)? = nil, cellBuilder: ((T, IndexPath) -> UIView)? = nil, lastCellWillDisplay: (() -> ())?) {
         self.data = data
         self.cellBuilder = cellBuilder
         self.headerBuilder = headerBuilder
+        self.lastCellWillDisplay = lastCellWillDisplay
         super.init(frame: .zero)
         self.setupTableView()
     }
@@ -38,13 +42,18 @@ class FListViewBuilder<D, T>: UIView, UITableViewDataSource, UITableViewDelegate
         fatalError("init(coder:) has not been implemented")
     }
     
+    func updateData(_ data: [TableViewSectionData<D, T>]) {
+        self.data = data
+        self.tableView.reloadData()
+    }
+    
     func setupTableView() {
         self.tableView.dataSource = self
         self.tableView.delegate = self
         self.tableView.translatesAutoresizingMaskIntoConstraints = false
         self.tableView.rowHeight = UITableView.automaticDimension
         self.tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
-        self.addSubview(self.tableView)  // 確保 tableView 被加到 FListViewBuilder 視圖中
+        self.addSubview(self.tableView)
         self.tableView.reloadData()
         if #available(iOS 15.0, *) {
             tableView.sectionHeaderTopPadding = 0
@@ -105,10 +114,8 @@ class FListViewBuilder<D, T>: UIView, UITableViewDataSource, UITableViewDelegate
             cell.removeFromSuperview()
         }
         cell.selectionStyle = .none
-        // 將 cellView 添加到 contentView 中
         cell.contentView.addSubview(cellView)
         
-        // 設置 cellView 的約束
         cellView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             cellView.topAnchor.constraint(equalTo: cell.contentView.topAnchor),
@@ -118,5 +125,11 @@ class FListViewBuilder<D, T>: UIView, UITableViewDataSource, UITableViewDelegate
         ])
         
         return cell
+    }
+    
+    func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
+        if indexPath.section == data.count - 1 && indexPath.row == data[indexPath.section].rows.count - 1 {
+            self.lastCellWillDisplay?()
+        }
     }
 }

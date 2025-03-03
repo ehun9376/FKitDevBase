@@ -7,14 +7,17 @@
 
 import UIKit
 
+
 class SelectorWidget<T>: UIView {
     
     private let observable: ObservableValue<T>
+    private let update: ((T,UIView)->())?
     private let builder: (T) -> UIView
     private var currentView: UIView?
     
-    init(observable: ObservableValue<T>, builder: @escaping (T) -> UIView) {
+    init(observable: ObservableValue<T>, update: ((T, UIView)->())? = nil, builder: @escaping (T) -> UIView) {
         self.observable = observable
+        self.update = update
         self.builder = builder
         super.init(frame: .zero)
         setupBinding()
@@ -22,7 +25,7 @@ class SelectorWidget<T>: UIView {
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
-    }
+    } 
     
     private func setupBinding() {
         observable.bind { [weak self] value in
@@ -31,6 +34,13 @@ class SelectorWidget<T>: UIView {
     }
     
     private func updateView(_ value: T) {
+        
+        if let update = update, let currentView = currentView {
+            update(value, currentView)
+            return
+        }
+        
+        
         currentView?.removeFromSuperview()
         let newView = builder(value)
         addSubview(newView)
